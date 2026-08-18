@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Smart Animal Health — Trung tâm điều khiển IoT</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">🐾</div>
+    <div class="sb-brand-text"><b>Smart Animal Health</b><span>Trung tâm điều khiển IoT</span></div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="sb-section-label">Tổng quan</div>
+    <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+    <button class="nav-item" data-view="devices" onclick="switchView('devices')">📡 Thiết bị</button>
+    <button class="nav-item" data-view="detail" onclick="openSelected()">❤️ Theo dõi sức khỏe</button>
+
+    <div class="sb-section-label">Dữ liệu</div>
+    <button class="nav-item" data-view="analytics" onclick="switchView('analytics')">📈 Phân tích dữ liệu</button>
+    <button class="nav-item" data-view="history" onclick="switchView('history')">🕓 Lịch sử</button>
+    <button class="nav-item" data-view="alerts" onclick="switchView('alerts')">⚠️ Cảnh báo</button>
+
+    <div class="sb-section-label">Hệ thống</div>
+    <button class="nav-item" data-view="settings" onclick="switchView('settings')">⚙️ Cài đặt MQTT</button>
+  </nav>
+
+  <div class="sb-footer">
+    <div class="sb-foot-row"><span><span id="sbDot" class="dot dot-bad"></span>MQTT</span><b id="sbMqtt">OFFLINE</b></div>
+    <div class="sb-foot-row"><span>Dự án</span><b id="sbProject">---</b></div>
+    <div class="sb-foot-row"><span>Trực tuyến</span><b id="sbOnline">0/0</b></div>
+  </div>
+</aside>
+
+<main class="main">
+
+<header class="topbar">
+  <div class="tb-left">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <div class="tb-titles">
+      <h1 id="pageTitle">Dashboard sức khỏe vật nuôi</h1>
+      <p>ESP32-C3 → ESP32 tổng → WiFi → MQTT → Web</p>
+    </div>
+  </div>
+
+  <div class="tb-right">
+    <div class="chip"><span id="mqttDot" class="dot dot-bad"></span><b id="mqttText">NGOẠI TUYẾN</b></div>
+    <div class="chip">📡 <b id="tbOnline">0/0</b> trực tuyến</div>
+    <div class="chip">🕓 <b id="tbTime">---</b></div>
+    <button class="icon-btn" onclick="refreshUI()">⟳</button>
+    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</header>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<section class="view active" id="viewDashboard">
+
+  <div class="panel" style="margin-bottom:18px">
+    <div style="font-size:13px;color:var(--text-2)">
+      Đang xem: <b class="num" id="overviewId">---</b>
+    </div>
+  </div>
+
+  <div class="grid grid-kpi" style="margin-bottom:18px">
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">❤️ Nhịp tim</span><span class="kpi-ic icon-red">♥</span></div>
+      <div class="kpi-value" id="kpiBpm">--<span class="u">BPM</span></div>
+      <div class="kpi-sub">AVG: <b id="kpiAvg">--</b></div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🫁 SpO2</span><span class="kpi-ic icon-cyan">O₂</span></div>
+      <div class="kpi-value" id="kpiSpo2">--<span class="u">%</span></div>
+      <div class="kpi-sub" id="kpiSpo2Status">---</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🔴 RED</span><span class="kpi-ic icon-red">R</span></div>
+      <div class="kpi-value" id="kpiRed">--</div>
+      <div class="kpi-sub">MAX30102</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🟣 IR</span><span class="kpi-ic icon-blue">I</span></div>
+      <div class="kpi-value" id="kpiIr">--</div>
+      <div class="kpi-sub" id="kpiSignal">---</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🐾 Chuyển động</span><span class="kpi-ic icon-green">A</span></div>
+      <div class="kpi-value" id="kpiState" style="font-size:20px">---</div>
+      <div class="kpi-sub">Đang di chuyển=<b id="kpiMoving">0</b></div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">📡 Gateway</span><span class="kpi-ic icon-blue">G</span></div>
+      <div class="kpi-value" id="kpiGateway" style="font-size:17px">---</div>
+      <div class="kpi-sub">Trực tuyến <b id="kpiGatewayState">---</b></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Nhịp tim — Thời gian thực</h3><div class="panel-sub">BPM từ MAX30102</div></div>
+        <span class="data-status" id="statBpm"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="bpmChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Nồng độ Oxy máu — SpO2</h3><div class="panel-sub">SpO2 theo thời gian thực</div></div>
+        <span class="data-status" id="statSpo2"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="spo2Chart"></canvas></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>MPU6050 — Gia tốc</h3><div class="panel-sub">Trục X / Y / Z / Gia tốc động</div></div>
+        <span class="data-status" id="statAcc"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="accChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>MPU6050 — Con quay hồi chuyển</h3><div class="panel-sub">Con quay trục X / Y / Z</div></div>
+        <span class="data-status" id="statGyro"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="gyroChart"></canvas></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Tốc độ / Quãng đường</h3><div class="panel-sub">Từ tích phân gia tốc — có sai số trôi (drift)</div></div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric"><small>Tốc độ</small><b id="dashSpeed">0.000 m/s</b></div>
+        <div class="metric"><small>Tốc độ (km/h)</small><b id="dashSpeedKmh">0.000 km/h</b></div>
+        <div class="metric"><small>Quãng đường</small><b id="dashDistance">0.000 m</b></div>
+        <div class="metric"><small>Chuyển động</small><b id="dashMovement">---</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Chỉ số sức khỏe</h3><div class="panel-sub">Chỉ số phần mềm, không phải chẩn đoán y tế</div></div>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge" id="scoreGauge" style="--pct:0">
+          <div class="gauge-inner"><b id="scoreVal">--</b><span>/100</span></div>
+        </div>
+        <div id="scoreText" style="margin-top:10px;font-weight:700">Đang chờ dữ liệu...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div><h3>Toàn bộ dữ liệu ESP32-C3</h3><div class="panel-sub">Toàn bộ dữ liệu được ESP32 tổng chuyển lên MQTT</div></div>
+    </div>
+
+    <div class="metric-grid" id="fullTelemetry"></div>
+  </div>
+
+</section>
+
+<!-- DEVICES -->
+<section class="view" id="viewDevices">
+
+  <div class="panel-head">
+    <div>
+      <h3 style="font-size:17px">Danh sách thiết bị</h3>
+      <div class="panel-sub">Các ID được web cho phép và đã từng gửi dữ liệu</div>
+    </div>
+  </div>
+
+  <div class="grid grid-auto" id="deviceList"></div>
+</section>
+
+<!-- DETAIL -->
+<section class="view" id="viewDetail">
+
+  <div class="panel" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div>
+      <span class="status-pill ok-pill">● LIVE</span>
+      <h3 style="display:inline;margin-left:8px">Theo dõi sức khỏe</h3>
+      <div class="panel-sub">Device: <b class="num" id="detailId">---</b></div>
+    </div>
+    <button class="btn" onclick="switchView('devices')">← Thiết bị</button>
+  </div>
+
+  <div class="grid grid-kpi" style="margin-bottom:18px">
+
+    <div class="kpi"><div class="kpi-label">Nhịp tim (BPM)</div><div class="kpi-value" id="dBpm">0</div></div>
+    <div class="kpi"><div class="kpi-label">AVG BPM</div><div class="kpi-value" id="dAvg">0</div></div>
+    <div class="kpi"><div class="kpi-label">SpO2</div><div class="kpi-value" id="dSpo2">0%</div></div>
+    <div class="kpi"><div class="kpi-label">RED</div><div class="kpi-value" id="dRed">0</div></div>
+    <div class="kpi"><div class="kpi-label">IR</div><div class="kpi-value" id="dIr">0</div></div>
+    <div class="kpi"><div class="kpi-label">Chuyển động</div><div class="kpi-value" id="dState" style="font-size:18px">---</div></div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel"><div class="panel-head"><h3>Nhịp tim (BPM)</h3><span class="data-status" id="statDetailBpm"></span></div><div class="chart-wrap sm"><canvas id="detailBpm"></canvas></div></div>
+    <div class="panel"><div class="panel-head"><h3>SpO2</h3><span class="data-status" id="statDetailSpo2"></span></div><div class="chart-wrap sm"><canvas id="detailSpo2"></canvas></div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+
+    <div class="panel-head">
+      <div><h3>Toàn bộ dữ liệu MPU6050</h3><div class="panel-sub">Gia tốc, gia tốc tuyến tính, con quay hồi chuyển, tốc độ, quãng đường</div></div>
+    </div>
+
+    <div class="metric-grid" id="detailTelemetry"></div>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-head"><h3>Lịch sử thiết bị</h3></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th><th>BPM</th><th>TB</th><th>SpO2</th><th>IR</th><th>RED</th>
+            <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th>
+          </tr>
+        </thead>
+        <tbody id="detailHistory"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ANALYTICS -->
+<section class="view" id="viewAnalytics">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Phân tích dữ liệu</h3><div class="panel-sub">Thống kê thực tế từ dữ liệu MQTT</div></div>
+    <select id="analyticsDevice" onchange="renderAnalytics()"></select>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+    <div class="panel"><h3>BPM</h3><div class="metric-grid" id="anaBpm"></div></div>
+    <div class="panel"><h3>SpO2</h3><div class="metric-grid" id="anaSpo2"></div></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="panel"><h3>Gia tốc động MPU6050</h3><div class="metric-grid" id="anaAcc"></div></div>
+    <div class="panel"><h3>Tốc độ / Quãng đường</h3><div class="metric-grid" id="anaVelocity"></div></div>
+  </div>
+
+</section>
+
+<!-- HISTORY -->
+<section class="view" id="viewHistory">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Lịch sử</h3><div class="panel-sub">Tối đa 500 mẫu trên trình duyệt</div></div>
+    <button class="btn" onclick="exportCSV()">⬇ Xuất CSV</button>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <div class="controls">
+      <input id="historySearch" placeholder="Tìm ID..." oninput="renderHistory()">
+      <select id="historyDevice" onchange="renderHistory()"></select>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Thời gian</th><th>ID</th><th>BPM</th><th>TB</th><th>SpO2</th><th>IR</th><th>RED</th>
+          <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th><th>Quãng đường</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable"></tbody>
+    </table>
+  </div>
+
+</section>
+
+<!-- ALERTS -->
+<section class="view" id="viewAlerts">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Cảnh báo</h3><div class="panel-sub">Đánh giá realtime từ dữ liệu C3</div></div>
+  </div>
+
+  <div class="panel" id="alertList"></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="viewSettings">
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-head"><h3>MQTT / Project</h3></div>
+
+    <div class="metric-grid" style="margin-bottom:14px">
+      <div class="metric"><small>Máy chủ MQTT</small><b>wss://broker.hivemq.com:8884/mqtt</b></div>
+      <div class="metric"><small>Chủ đề dữ liệu</small><b id="settingsTopic"></b></div>
+      <div class="metric"><small>Gateway</small><b id="settingsGateway">---</b></div>
+    </div>
+
+    <div class="controls">
+      <input id="projectInput" value="healthier_farm_demo_001" placeholder="Mã dự án (Project ID)">
+      <button class="btn primary" onclick="saveProject()">Lưu Project</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>ID được phép kết nối</h3></div>
+
+    <div class="controls">
+      <input id="newId" placeholder="Ví dụ: 7D7850">
+      <button class="btn primary" onclick="addId()">Thêm ID</button>
+      <button class="btn danger" onclick="clearIds()">Xóa tất cả</button>
+    </div>
+
+    <div class="table-wrap" style="margin-top:14px">
+      <table>
+        <thead><tr><th>ID</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody id="idTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+</div>
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
