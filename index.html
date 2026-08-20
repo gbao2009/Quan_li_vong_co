@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Smart Animal Health — Trung tâm điều khiển IoT</title>
+<title>Quản Lí Vật Nuôi — Trung tâm điều khiển </title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 
   <nav class="sb-nav">
     <div class="sb-section-label">Tổng quan</div>
-    <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+    <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">📊 Đồ Thị</button>
     <button class="nav-item" data-view="devices" onclick="switchView('devices')">📡 Thiết bị</button>
     <button class="nav-item" data-view="detail" onclick="openSelected()">❤️ Theo dõi sức khỏe</button>
 
@@ -38,7 +38,7 @@
     <button class="nav-item" data-view="alerts" onclick="switchView('alerts')">⚠️ Cảnh báo</button>
 
     <div class="sb-section-label">Hệ thống</div>
-    <button class="nav-item" data-view="settings" onclick="switchView('settings')">⚙️ Cài đặt MQTT</button>
+    <button class="nav-item" data-view="settings" onclick="switchView('settings')">⚙️ Cài đặt </button>
   </nav>
 
   <div class="sb-footer">
@@ -54,7 +54,7 @@
   <div class="tb-left">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <div class="tb-titles">
-      <h1 id="pageTitle">Dashboard sức khỏe vật nuôi</h1>
+      <h1 id="pageTitle">Đồ Thị sức khỏe vật nuôi</h1>
       <p>ESP32-C3 → ESP32 tổng → WiFi → MQTT → Web</p>
     </div>
   </div>
@@ -75,7 +75,7 @@
 
   <div class="panel" style="margin-bottom:18px">
     <div style="font-size:13px;color:var(--text-2)">
-      Đang xem: <b class="num" id="overviewId">---</b>
+      Đang xem thiết bị có id là: <b class="num" id="overviewId">---</b>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
 
     <div class="kpi">
       <div class="kpi-top"><span class="kpi-label">❤️ Nhịp tim</span><span class="kpi-ic icon-red">♥</span></div>
-      <div class="kpi-value" id="kpiBpm">--<span class="u">BPM</span></div>
+      <div class="kpi-value" id="kpiBpm">--<span class="u">nhịp/phút</span></div>
       <div class="kpi-sub">AVG: <b id="kpiAvg">--</b></div>
     </div>
 
@@ -136,7 +136,7 @@
 
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Nồng độ Oxy máu — SpO2</h3><div class="panel-sub">SpO2 theo thời gian thực</div></div>
+        <div><h3>Nồng độ Oxy máu</h3><div class="panel-sub">SpO2 theo thời gian thực</div></div>
         <span class="data-status" id="statSpo2"></span>
       </div>
       <div class="chart-wrap"><canvas id="spo2Chart"></canvas></div>
@@ -156,7 +156,7 @@
 
     <div class="panel">
       <div class="panel-head">
-        <div><h3>MPU6050 — Gia tốc</h3><div class="panel-sub">Trục X / Y / Z / Gia tốc động</div></div>
+        <div><h3>Gia tốc</h3><div class="panel-sub">Trục X / Y / Z / Gia tốc động</div></div>
         <span class="data-status" id="statAcc"></span>
       </div>
       <div class="chart-wrap"><canvas id="accChart"></canvas></div>
@@ -164,7 +164,7 @@
 
     <div class="panel">
       <div class="panel-head">
-        <div><h3>MPU6050 — Con quay hồi chuyển</h3><div class="panel-sub">Con quay trục X / Y / Z</div></div>
+        <div><h3>Con quay hồi chuyển</h3><div class="panel-sub">Con quay trục X / Y / Z</div></div>
         <span class="data-status" id="statGyro"></span>
       </div>
       <div class="chart-wrap"><canvas id="gyroChart"></canvas></div>
@@ -202,7 +202,7 @@
 
   <div class="panel">
     <div class="panel-head">
-      <div><h3>Toàn bộ dữ liệu ESP32-C3</h3><div class="panel-sub">Toàn bộ dữ liệu được ESP32 tổng chuyển lên MQTT</div></div>
+      <div><h3>Toàn bộ dữ liệu của vòng cổ</h3><div class="panel-sub">Toàn bộ dữ liệu được ESP32 tổng chuyển lên MQTT</div></div>
     </div>
 
     <div class="metric-grid" id="fullTelemetry"></div>
@@ -238,7 +238,7 @@
   <div class="grid grid-kpi" style="margin-bottom:18px">
 
     <div class="kpi"><div class="kpi-label">Nhịp tim (BPM)</div><div class="kpi-value" id="dBpm">0</div></div>
-    <div class="kpi"><div class="kpi-label">AVG BPM</div><div class="kpi-value" id="dAvg">0</div></div>
+    <div class="kpi"><div class="kpi-label">AVG nhịp/phút</div><div class="kpi-value" id="dAvg">0</div></div>
     <div class="kpi"><div class="kpi-label">SpO2</div><div class="kpi-value" id="dSpo2">0%</div></div>
     <div class="kpi"><div class="kpi-label">RED</div><div class="kpi-value" id="dRed">0</div></div>
     <div class="kpi"><div class="kpi-label">IR</div><div class="kpi-value" id="dIr">0</div></div>
@@ -249,7 +249,7 @@
 
   <div class="grid grid-2" style="margin-bottom:18px">
 
-    <div class="panel"><div class="panel-head"><h3>Nhịp tim (BPM)</h3><span class="data-status" id="statDetailBpm"></span></div><div class="chart-wrap sm"><canvas id="detailBpm"></canvas></div></div>
+    <div class="panel"><div class="panel-head"><h3>nhịp/phút</h3><span class="data-status" id="statDetailBpm"></span></div><div class="chart-wrap sm"><canvas id="detailBpm"></canvas></div></div>
     <div class="panel"><div class="panel-head"><h3>SpO2</h3><span class="data-status" id="statDetailSpo2"></span></div><div class="chart-wrap sm"><canvas id="detailSpo2"></canvas></div></div>
   </div>
 
@@ -261,7 +261,7 @@
   <div class="panel" style="margin-bottom:18px">
 
     <div class="panel-head">
-      <div><h3>Toàn bộ dữ liệu MPU6050</h3><div class="panel-sub">Gia tốc, gia tốc tuyến tính, con quay hồi chuyển, tốc độ, quãng đường</div></div>
+      <div><h3>Toàn bộ dữ liệu cảm biến</h3><div class="panel-sub">Gia tốc, gia tốc tuyến tính, con quay hồi chuyển, tốc độ, quãng đường</div></div>
     </div>
 
     <div class="metric-grid" id="detailTelemetry"></div>
@@ -276,7 +276,7 @@
       <table>
         <thead>
           <tr>
-            <th>Thời gian</th><th>BPM</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
+            <th>Thời gian</th><th>nhịp/phút</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
             <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th>
           </tr>
         </thead>
@@ -297,7 +297,7 @@
   </div>
 
   <div class="grid grid-2" style="margin-bottom:18px">
-    <div class="panel"><h3>BPM</h3><div class="metric-grid" id="anaBpm"></div></div>
+    <div class="panel"><h3>nhịp/phút</h3><div class="metric-grid" id="anaBpm"></div></div>
     <div class="panel"><h3>SpO2</h3><div class="metric-grid" id="anaSpo2"></div></div>
   </div>
 
@@ -331,7 +331,7 @@
     <table>
       <thead>
         <tr>
-          <th>Thời gian</th><th>ID</th><th>BPM</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
+          <th>Thời gian</th><th>ID</th><th>nhịp/phút</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
           <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th><th>Quãng đường</th>
         </tr>
       </thead>
