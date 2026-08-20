@@ -349,6 +349,6 @@ function showToast(message) {
     toast.innerHTML = `<strong>Cảnh báo:</strong><br> ${message}`;
     container.appendChild(toast);
     
-    // Tự động xóa sau 5 giây
+    // Tự động xóa sau 5 giây b
     setTimeout(() => { toast.remove(); }, 5000);
 }
