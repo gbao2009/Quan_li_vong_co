@@ -1,0 +1,3477 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Smart Animal Health — Trung tâm điều khiển IoT</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<style>
+:root{
+  --bg:#F3F6FC;--bg-soft:#EAF0FA;--surface:#FFFFFF;--surface-2:#F8FAFE;
+  --border:#E3E9F3;--border-strong:#D3DCEC;--text-1:#101828;--text-2:#5B6577;
+  --text-3:#98A2B3;--accent:#2F5CFF;--accent-ink:#1E3FCB;--accent-soft:#E8EDFF;
+  --cyan:#08B7C9;--cyan-soft:#E1F8FA;--ok:#12A150;--ok-soft:#E4F8ED;
+  --warn:#C2790A;--warn-soft:#FCF0DA;--crit:#DB3B3B;--crit-soft:#FCE7E7;
+  --shadow-sm:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.05);
+  --shadow-md:0 4px 14px rgba(20,30,60,.07);--shadow-lg:0 14px 40px rgba(20,30,60,.12);
+  --radius-lg:20px;--radius-md:14px;--radius-sm:10px;
+  --font-display:'Sora',sans-serif;--font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;--sidebar-w:264px
+}
+[data-theme="dark"]{
+  --bg:#0A1120;--bg-soft:#0D1526;--surface:#121B2E;--surface-2:#0F1828;
+  --border:#22314A;--border-strong:#2C3E5C;--text-1:#EAF0FB;--text-2:#93A2BE;
+  --text-3:#5E6E8C;--accent:#5C82FF;--accent-ink:#7C9BFF;--accent-soft:#1B2648;
+  --cyan:#2FD7E8;--cyan-soft:#0F2C31;--ok:#2FD679;--ok-soft:#0E2A1D;
+  --warn:#F0AA3C;--warn-soft:#302209;--crit:#FF6363;--crit-soft:#331414;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(circle at 100% 0%,var(--accent-soft) 0%,transparent 40%),
+  radial-gradient(circle at 0% 100%,var(--cyan-soft) 0%,transparent 35%),var(--bg);
+  background-attachment:fixed;color:var(--text-1);font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased
+}
+h1,h2,h3,h4{font-family:var(--font-display);margin:0;letter-spacing:-.01em}
+.num{font-family:var(--font-mono)}
+button,input,select{font-family:var(--font-body)}
+.app{display:flex;min-height:100vh}
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:60
+}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;border-bottom:1px solid var(--border)}
+.sb-logo{
+  width:40px;height:40px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 16px rgba(47,92,255,.35)
+}
+.sb-brand-text b{display:block;font-family:var(--font-display);font-size:15px}
+.sb-brand-text span{display:block;font-size:11px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase}
+.sb-nav{flex:1;overflow-y:auto;padding:14px 12px}
+.sb-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);padding:14px 12px 6px}
+.nav-item{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:12px;
+  border:none;background:transparent;color:var(--text-2);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:2px
+}
+.nav-item:hover{background:var(--surface-2);color:var(--text-1)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.sb-footer{padding:16px;border-top:1px solid var(--border);font-size:12.5px}
+.sb-foot-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:var(--text-2)}
+.sb-foot-row b{color:var(--text-1);font-family:var(--font-mono)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-ok{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.dot-warn{background:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
+.dot-bad{background:var(--crit);box-shadow:0 0 0 3px var(--crit-soft)}
+.main{flex:1;margin-left:var(--sidebar-w);min-width:0}
+.topbar{
+  position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 26px
+}
+.tb-left,.tb-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tb-left{min-width:0}
+.hamburger{
+  display:none;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;cursor:pointer
+}
+.tb-titles h1{font-size:19px}.tb-titles p{margin:2px 0 0;font-size:12.5px;color:var(--text-2)}
+.chip{
+  display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--border);font-size:12.5px;color:var(--text-2);font-family:var(--font-mono);white-space:nowrap
+}
+.chip b{color:var(--text-1)}
+.icon-btn,.btn,.select-btn{
+  border-radius:10px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text-1);
+  cursor:pointer
+}
+.icon-btn{width:38px;height:38px}
+.btn{padding:9px 14px;font-size:13px;font-weight:600}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
+.btn:hover,.icon-btn:hover{background:var(--accent-soft);color:var(--accent-ink)}
+.content{padding:24px 26px 60px;max-width:1540px;margin:auto}
+.view{display:none}.view.active{display:block}
+.grid{display:grid;gap:18px}
+.grid-kpi{grid-template-columns:repeat(7,1fr)}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-auto{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+@media(max-width:1180px){.grid-kpi{grid-template-columns:repeat(3,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}}
+@media(max-width:960px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.hamburger{display:block}.content{padding:18px 14px 50px}.topbar{padding:14px 16px}.tb-titles h1{font-size:16px}}
+@media(max-width:620px){.grid-kpi{grid-template-columns:repeat(2,1fr)}}
+.panel,.kpi,.device-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-sm)
+}
+.kpi{padding:16px}
+.kpi:hover,.device-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.kpi-top,.panel-head,.dc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.kpi-label{font-size:12px;color:var(--text-2);font-weight:600}
+.kpi-value{font-family:var(--font-mono);font-size:26px;font-weight:700;margin-top:8px}
+.kpi-value .u{font-size:13px;color:var(--text-3);margin-left:3px}
+.kpi-sub,.panel-sub{font-size:11.5px;color:var(--text-3);margin-top:6px}
+.kpi-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.icon-red{background:var(--crit-soft);color:var(--crit)}
+.icon-blue{background:var(--accent-soft);color:var(--accent)}
+.icon-cyan{background:var(--cyan-soft);color:var(--cyan)}
+.icon-green{background:var(--ok-soft);color:var(--ok)}
+.icon-amber{background:var(--warn-soft);color:var(--warn)}
+.chart-wrap{height:280px;position:relative}.chart-wrap.sm{height:210px}
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:8px}
+.gauge{
+  width:170px;height:170px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(var(--accent) calc(var(--pct,0)*1%),var(--border) 0);position:relative
+}
+.gauge:before{content:"";position:absolute;inset:12px;border-radius:50%;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border)}
+.gauge-inner{position:relative;text-align:center}.gauge-inner b{font-family:var(--font-mono);font-size:34px;display:block}
+.gauge-inner span{font-size:11px;color:var(--text-3)}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-weight:700;font-size:12px}
+.ok-pill{background:var(--ok-soft);color:var(--ok)}.bad-pill{background:var(--crit-soft);color:var(--crit)}
+.wait-pill{background:var(--warn-soft);color:var(--warn)}
+.alert-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.alert-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.alert-text b{display:block;font-size:13px}.alert-text span{font-size:11.5px;color:var(--text-3)}
+.dc-id{font-family:var(--font-mono);font-weight:700}.dc-badge{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px}
+.online{background:var(--ok-soft);color:var(--ok)}.offline{background:var(--crit-soft);color:var(--crit)}
+.dc-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.dc-stat{background:var(--surface-2);border-radius:9px;padding:9px 10px}
+.dc-stat span{display:block;font-size:10.5px;color:var(--text-3);font-weight:600}.dc-stat b{font-family:var(--font-mono);font-size:15px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select{
+  padding:9px 12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text-1)
+}
+.table-wrap{overflow:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--radius-md)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:center}
+th{background:var(--surface-2);font-size:11px;color:var(--text-2);position:sticky;top:0}
+.empty{padding:32px;text-align:center;color:var(--text-3)}
+.mono-row{font-family:var(--font-mono);font-size:12px;line-height:1.9}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.metric{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px}
+.metric small{display:block;color:var(--text-3);margin-bottom:4px}.metric b{font-family:var(--font-mono)}
+.warn{color:var(--warn)}.bad{color:var(--crit)}.ok{color:var(--ok)}
+.toast{position:fixed;right:22px;bottom:22px;background:var(--text-1);color:var(--bg);padding:11px 16px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.2s;z-index:100}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Trạng thái dữ liệu trực tiếp trên từng biểu đồ */
+.panel-head{position:relative}
+.data-status{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  padding:5px 11px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);
+  white-space:nowrap;letter-spacing:.01em
+}
+.data-status:empty{display:none}
+.data-status .dot{margin-right:0}
+.ds-live{color:var(--ok)}
+.ds-slow{color:var(--warn)}
+.ds-lost{color:var(--crit)}
+.ds-wait{color:var(--text-3)}
+@keyframes dotPulse{
+  0%{box-shadow:0 0 0 0 rgba(18,161,80,.45)}
+  70%{box-shadow:0 0 0 7px rgba(18,161,80,0)}
+  100%{box-shadow:0 0 0 0 rgba(18,161,80,0)}
+}
+.dot-live-pulse{animation:dotPulse 1.8s ease-out infinite}
+.chart-wrap{transition:opacity .15s}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">🐾</div>
+    <div class="sb-brand-text"><b>Smart Animal Health</b><span>Trung tâm điều khiển IoT</span></div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="sb-section-label">Tổng quan</div>
+    <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+    <button class="nav-item" data-view="devices" onclick="switchView('devices')">📡 Thiết bị</button>
+    <button class="nav-item" data-view="detail" onclick="openSelected()">❤️ Theo dõi sức khỏe</button>
+
+    <div class="sb-section-label">Dữ liệu</div>
+    <button class="nav-item" data-view="analytics" onclick="switchView('analytics')">📈 Phân tích dữ liệu</button>
+    <button class="nav-item" data-view="history" onclick="switchView('history')">🕓 Lịch sử</button>
+    <button class="nav-item" data-view="alerts" onclick="switchView('alerts')">⚠️ Cảnh báo</button>
+
+    <div class="sb-section-label">Hệ thống</div>
+    <button class="nav-item" data-view="settings" onclick="switchView('settings')">⚙️ Cài đặt MQTT</button>
+  </nav>
+
+  <div class="sb-footer">
+    <div class="sb-foot-row"><span><span id="sbDot" class="dot dot-bad"></span>MQTT</span><b id="sbMqtt">OFFLINE</b></div>
+    <div class="sb-foot-row"><span>Dự án</span><b id="sbProject">---</b></div>
+    <div class="sb-foot-row"><span>Trực tuyến</span><b id="sbOnline">0/0</b></div>
+  </div>
+</aside>
+
+<main class="main">
+
+<header class="topbar">
+  <div class="tb-left">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <div class="tb-titles">
+      <h1 id="pageTitle">Dashboard sức khỏe vật nuôi</h1>
+      <p>ESP32-C3 → ESP32 tổng → WiFi → MQTT → Web</p>
+    </div>
+  </div>
+
+  <div class="tb-right">
+    <div class="chip"><span id="mqttDot" class="dot dot-bad"></span><b id="mqttText">NGOẠI TUYẾN</b></div>
+    <div class="chip">📡 <b id="tbOnline">0/0</b> trực tuyến</div>
+    <div class="chip">🕓 <b id="tbTime">---</b></div>
+    <button class="icon-btn" onclick="refreshUI()">⟳</button>
+    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</header>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<section class="view active" id="viewDashboard">
+
+  <div class="panel" style="margin-bottom:18px">
+    <div style="font-size:13px;color:var(--text-2)">
+      Đang xem: <b class="num" id="overviewId">---</b>
+    </div>
+  </div>
+
+  <div class="grid grid-kpi" style="margin-bottom:18px">
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">❤️ Nhịp tim</span><span class="kpi-ic icon-red">♥</span></div>
+      <div class="kpi-value" id="kpiBpm">--<span class="u">BPM</span></div>
+      <div class="kpi-sub">AVG: <b id="kpiAvg">--</b></div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🫁 SpO2</span><span class="kpi-ic icon-cyan">O₂</span></div>
+      <div class="kpi-value" id="kpiSpo2">--<span class="u">%</span></div>
+      <div class="kpi-sub" id="kpiSpo2Status">---</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🔴 RED</span><span class="kpi-ic icon-red">R</span></div>
+      <div class="kpi-value" id="kpiRed">--</div>
+      <div class="kpi-sub">MAX30102</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🟣 IR</span><span class="kpi-ic icon-blue">I</span></div>
+      <div class="kpi-value" id="kpiIr">--</div>
+      <div class="kpi-sub" id="kpiSignal">---</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🐾 Chuyển động</span><span class="kpi-ic icon-green">A</span></div>
+      <div class="kpi-value" id="kpiState" style="font-size:20px">---</div>
+      <div class="kpi-sub">Đang di chuyển=<b id="kpiMoving">0</b></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">🌡️ Nhiệt độ</span><span class="kpi-ic icon-amber">T</span></div>
+      <div class="kpi-value" id="kpiTemperature">--<span class="u">°C</span></div>
+      <div class="kpi-sub">DS18B20</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-label">📡 Gateway</span><span class="kpi-ic icon-blue">G</span></div>
+      <div class="kpi-value" id="kpiGateway" style="font-size:17px">---</div>
+      <div class="kpi-sub">Trực tuyến <b id="kpiGatewayState">---</b></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Nhịp tim — Thời gian thực</h3><div class="panel-sub">BPM từ MAX30102</div></div>
+        <span class="data-status" id="statBpm"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="bpmChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Nồng độ Oxy máu — SpO2</h3><div class="panel-sub">SpO2 theo thời gian thực</div></div>
+        <span class="data-status" id="statSpo2"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="spo2Chart"></canvas></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>🌡️ Nhiệt độ cơ thể — Thời gian thực</h3><div class="panel-sub">DS18B20 theo thời gian thực</div></div>
+        <span class="data-status" id="statTemperature"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="temperatureChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>MPU6050 — Gia tốc</h3><div class="panel-sub">Trục X / Y / Z / Gia tốc động</div></div>
+        <span class="data-status" id="statAcc"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="accChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>MPU6050 — Con quay hồi chuyển</h3><div class="panel-sub">Con quay trục X / Y / Z</div></div>
+        <span class="data-status" id="statGyro"></span>
+      </div>
+      <div class="chart-wrap"><canvas id="gyroChart"></canvas></div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Tốc độ / Quãng đường</h3><div class="panel-sub">Từ tích phân gia tốc — có sai số trôi (drift)</div></div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric"><small>Tốc độ</small><b id="dashSpeed">0.000 m/s</b></div>
+        <div class="metric"><small>Tốc độ (km/h)</small><b id="dashSpeedKmh">0.000 km/h</b></div>
+        <div class="metric"><small>Quãng đường</small><b id="dashDistance">0.000 m</b></div>
+        <div class="metric"><small>Chuyển động</small><b id="dashMovement">---</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Chỉ số sức khỏe</h3><div class="panel-sub">Chỉ số phần mềm, không phải chẩn đoán y tế</div></div>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge" id="scoreGauge" style="--pct:0">
+          <div class="gauge-inner"><b id="scoreVal">--</b><span>/100</span></div>
+        </div>
+        <div id="scoreText" style="margin-top:10px;font-weight:700">Đang chờ dữ liệu...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div><h3>Toàn bộ dữ liệu ESP32-C3</h3><div class="panel-sub">Toàn bộ dữ liệu được ESP32 tổng chuyển lên MQTT</div></div>
+    </div>
+
+    <div class="metric-grid" id="fullTelemetry"></div>
+  </div>
+
+</section>
+
+<!-- DEVICES -->
+<section class="view" id="viewDevices">
+
+  <div class="panel-head">
+    <div>
+      <h3 style="font-size:17px">Danh sách thiết bị</h3>
+      <div class="panel-sub">Các ID được web cho phép và đã từng gửi dữ liệu</div>
+    </div>
+  </div>
+
+  <div class="grid grid-auto" id="deviceList"></div>
+</section>
+
+<!-- DETAIL -->
+<section class="view" id="viewDetail">
+
+  <div class="panel" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div>
+      <span class="status-pill ok-pill">● LIVE</span>
+      <h3 style="display:inline;margin-left:8px">Theo dõi sức khỏe</h3>
+      <div class="panel-sub">Device: <b class="num" id="detailId">---</b></div>
+    </div>
+    <button class="btn" onclick="switchView('devices')">← Thiết bị</button>
+  </div>
+
+  <div class="grid grid-kpi" style="margin-bottom:18px">
+
+    <div class="kpi"><div class="kpi-label">Nhịp tim (BPM)</div><div class="kpi-value" id="dBpm">0</div></div>
+    <div class="kpi"><div class="kpi-label">AVG BPM</div><div class="kpi-value" id="dAvg">0</div></div>
+    <div class="kpi"><div class="kpi-label">SpO2</div><div class="kpi-value" id="dSpo2">0%</div></div>
+    <div class="kpi"><div class="kpi-label">RED</div><div class="kpi-value" id="dRed">0</div></div>
+    <div class="kpi"><div class="kpi-label">IR</div><div class="kpi-value" id="dIr">0</div></div>
+    <div class="kpi"><div class="kpi-label">🌡️ Nhiệt độ</div><div class="kpi-value" id="dTemperature">0°C</div></div>
+    <div class="kpi"><div class="kpi-label">Chuyển động</div><div class="kpi-value" id="dState" style="font-size:18px">---</div></div>
+
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+
+    <div class="panel"><div class="panel-head"><h3>Nhịp tim (BPM)</h3><span class="data-status" id="statDetailBpm"></span></div><div class="chart-wrap sm"><canvas id="detailBpm"></canvas></div></div>
+    <div class="panel"><div class="panel-head"><h3>SpO2</h3><span class="data-status" id="statDetailSpo2"></span></div><div class="chart-wrap sm"><canvas id="detailSpo2"></canvas></div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-head"><h3>🌡️ Nhiệt độ cơ thể</h3><span class="data-status" id="statDetailTemperature"></span></div>
+    <div class="chart-wrap sm"><canvas id="detailTemperature"></canvas></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+
+    <div class="panel-head">
+      <div><h3>Toàn bộ dữ liệu MPU6050</h3><div class="panel-sub">Gia tốc, gia tốc tuyến tính, con quay hồi chuyển, tốc độ, quãng đường</div></div>
+    </div>
+
+    <div class="metric-grid" id="detailTelemetry"></div>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-head"><h3>Lịch sử thiết bị</h3></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th><th>BPM</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
+            <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th>
+          </tr>
+        </thead>
+        <tbody id="detailHistory"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ANALYTICS -->
+<section class="view" id="viewAnalytics">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Phân tích dữ liệu</h3><div class="panel-sub">Thống kê thực tế từ dữ liệu MQTT</div></div>
+    <select id="analyticsDevice" onchange="renderAnalytics()"></select>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+    <div class="panel"><h3>BPM</h3><div class="metric-grid" id="anaBpm"></div></div>
+    <div class="panel"><h3>SpO2</h3><div class="metric-grid" id="anaSpo2"></div></div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:18px">
+    <div class="panel"><h3>🌡️ Nhiệt độ</h3><div class="metric-grid" id="anaTemperature"></div></div>
+    <div class="panel"><h3>Gia tốc động MPU6050</h3><div class="metric-grid" id="anaAcc"></div></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="panel"><h3>Tốc độ / Quãng đường</h3><div class="metric-grid" id="anaVelocity"></div></div>
+  </div>
+
+</section>
+
+<!-- HISTORY -->
+<section class="view" id="viewHistory">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Lịch sử</h3><div class="panel-sub">Tối đa 500 mẫu trên trình duyệt</div></div>
+    <button class="btn" onclick="exportCSV()">⬇ Xuất CSV</button>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <div class="controls">
+      <input id="historySearch" placeholder="Tìm ID..." oninput="renderHistory()">
+      <select id="historyDevice" onchange="renderHistory()"></select>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Thời gian</th><th>ID</th><th>BPM</th><th>TB</th><th>SpO2</th><th>Nhiệt độ</th><th>IR</th><th>RED</th>
+          <th>X</th><th>Y</th><th>Z</th><th>DA</th><th>Trạng thái</th><th>Tốc độ</th><th>Quãng đường</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable"></tbody>
+    </table>
+  </div>
+
+</section>
+
+<!-- ALERTS -->
+<section class="view" id="viewAlerts">
+
+  <div class="panel-head">
+    <div><h3 style="font-size:17px">Cảnh báo</h3><div class="panel-sub">Đánh giá realtime từ dữ liệu C3</div></div>
+  </div>
+
+  <div class="panel" id="alertList"></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="viewSettings">
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-head"><h3>MQTT / Project</h3></div>
+
+    <div class="metric-grid" style="margin-bottom:14px">
+      <div class="metric"><small>Máy chủ MQTT</small><b>wss://broker.hivemq.com:8884/mqtt</b></div>
+      <div class="metric"><small>Chủ đề dữ liệu</small><b id="settingsTopic"></b></div>
+      <div class="metric"><small>Gateway</small><b id="settingsGateway">---</b></div>
+    </div>
+
+    <div class="controls">
+      <input id="projectInput" value="healthier_farm_demo_001" placeholder="Mã dự án (Project ID)">
+      <button class="btn primary" onclick="saveProject()">Lưu Project</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>ID được phép kết nối</h3></div>
+
+    <div class="controls">
+      <input id="newId" placeholder="Ví dụ: 7D7850">
+      <button class="btn primary" onclick="addId()">Thêm ID</button>
+      <button class="btn danger" onclick="clearIds()">Xóa tất cả</button>
+    </div>
+
+    <div class="table-wrap" style="margin-top:14px">
+      <table>
+        <thead><tr><th>ID</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody id="idTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+</div>
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+
+const MQTT_URL =
+  "wss://broker.hivemq.com:8884/mqtt";
+
+let PROJECT_ID =
+  localStorage.getItem(
+    "farm_project_id_v3"
+  ) ||
+  "healthier_farm_demo_001";
+
+let TOPIC_BASE = "";
+let TOPIC_DATA = "";
+let TOPIC_ALLOWED = "";
+let TOPIC_STATUS = "";
+
+const VALID_BPM_MIN = 40;
+const VALID_BPM_MAX = 220;
+const VALID_SPO2_MIN = 70;
+const VALID_SPO2_MAX = 100;
+
+/* Cấu hình biểu đồ thời gian thực:
+   - CHART_WINDOW_MS: khoảng thời gian hiển thị trên trục X (cuộn theo thời gian thực)
+   - SERIES_MAX_AGE_MS: thời gian tối đa giữ lại trong bộ nhớ (phục vụ phân tích/lịch sử gần đây)
+   - SERIES_MAX_POINTS: giới hạn cứng số điểm/thiết bị để không phình bộ nhớ khi chạy nhiều giờ */
+const CHART_WINDOW_MS = 60 * 1000;
+const SERIES_MAX_AGE_MS = 5 * 60 * 1000;
+const SERIES_MAX_POINTS = 1500;
+
+/* Ngưỡng đánh giá "dữ liệu chậm" trên chấm trạng thái từng biểu đồ */
+const DATA_SLOW_MS = 3000;
+
+let client = null;
+let allowedIds = [];
+let devices = {};
+let historyRows = [];
+let selectedId = null;
+
+/* ============================================================
+   TOPICS
+   ============================================================ */
+
+function updateTopics(){
+
+  TOPIC_BASE =
+    "esp32_farm/" +
+    PROJECT_ID;
+
+  TOPIC_DATA =
+    TOPIC_BASE +
+    "/data";
+
+  TOPIC_ALLOWED =
+    TOPIC_BASE +
+    "/allowed_ids";
+
+  TOPIC_STATUS =
+    TOPIC_BASE +
+    "/status";
+
+  document.getElementById(
+    "sbProject"
+  ).innerText =
+    PROJECT_ID;
+
+  document.getElementById(
+    "settingsTopic"
+  ).innerText =
+    TOPIC_DATA;
+}
+
+/* ============================================================
+   STORAGE
+   ============================================================ */
+
+function idsKey(){
+  return "allowedIds_v4_" +
+    PROJECT_ID;
+}
+
+function loadIds(){
+
+  try{
+
+    allowedIds =
+      JSON.parse(
+        localStorage.getItem(
+          idsKey()
+        ) || "[]"
+      )
+      .map(x =>
+        String(x)
+          .trim()
+          .toUpperCase()
+      )
+      .filter(Boolean);
+
+  }catch(e){
+
+    allowedIds = [];
+  }
+}
+
+function saveIds(){
+
+  localStorage.setItem(
+    idsKey(),
+    JSON.stringify(
+      allowedIds
+    )
+  );
+}
+
+/* ============================================================
+   DEVICE MODEL
+   ============================================================ */
+
+function getDevice(id){
+
+  id =
+    String(id)
+      .trim()
+      .toUpperCase();
+
+  if(!devices[id]){
+
+    devices[id] = {
+
+      id,
+
+      online:false,
+      lastSeen:0,
+
+      latest:null,
+
+      history:[],
+
+      series:{
+        t:[],
+        temperature:[],
+        bpm:[],
+        spo2:[],
+        ax:[],
+        ay:[],
+        az:[],
+        da:[],
+        gx:[],
+        gy:[],
+        gz:[],
+        speed:[],
+        distance:[]
+      }
+    };
+  }
+
+  return devices[id];
+}
+
+/* ============================================================
+   MQTT JSON NORMALIZER
+   ============================================================ */
+
+function normalize(data){
+
+  if(typeof data === "string"){
+
+    const text =
+      data.trim();
+
+    if(
+      text.startsWith("{")
+    ){
+
+      try{
+
+        data =
+          JSON.parse(
+            text
+          );
+
+      }catch(e){
+
+        return null;
+      }
+
+    }else{
+
+      const obj = {};
+
+      text
+        .split(/[;\r\n]+/)
+        .forEach(part => {
+
+          const i =
+            part.indexOf("=");
+
+          if(i <= 0)
+            return;
+
+          const k =
+            part
+              .slice(0,i)
+              .trim()
+              .toUpperCase();
+
+          const v =
+            part
+              .slice(i+1)
+              .trim();
+
+          obj[k] = v;
+        });
+
+      data = obj;
+    }
+  }
+
+  if(!data)
+    return null;
+
+  const n =
+    (v,d=0) => {
+
+      const x =
+        Number(v);
+
+      return Number.isFinite(x)
+        ? x
+        : d;
+    };
+
+  return {
+
+    device_id:String(
+      data.device_id ??
+      data.deviceId ??
+      data.id ??
+      data.D ??
+      ""
+    )
+    .trim()
+    .toUpperCase(),
+
+    gateway_id:String(
+      data.gateway_id ??
+      data.gateway ??
+      ""
+    ),
+
+    bpm:n(
+      data.bpm ??
+      data.B
+    ),
+
+    avg:n(
+      data.avg ??
+      data.A
+    ),
+
+    spo2:n(
+      data.spo2 ??
+      data.O
+    ),
+
+    
+    temperature:n(
+      data.temperature ??
+      data.temp ??
+      data.TEMP ??
+      data.T
+    ),
+
+    ir:n(
+      data.ir ??
+      data.I
+    ),
+
+    red:n(
+      data.red ??
+      data.RED
+    ),
+
+    accelX:n(
+      data.accelX ??
+      data.X
+    ),
+
+    accelY:n(
+      data.accelY ??
+      data.Y
+    ),
+
+    accelZ:n(
+      data.accelZ ??
+      data.Z
+    ),
+
+    accelTotal:n(
+      data.accelTotal ??
+      data.AT
+    ),
+
+    dynamicAcceleration:n(
+      data.dynamicAcceleration ??
+      data.DA
+    ),
+
+    linearAccelX:n(
+      data.linearAccelX ??
+      data.LX
+    ),
+
+    linearAccelY:n(
+      data.linearAccelY ??
+      data.LY
+    ),
+
+    linearAccelZ:n(
+      data.linearAccelZ ??
+      data.LZ
+    ),
+
+    gyroX:n(
+      data.gyroX ??
+      data.GX
+    ),
+
+    gyroY:n(
+      data.gyroY ??
+      data.GY
+    ),
+
+    gyroZ:n(
+      data.gyroZ ??
+      data.GZ
+    ),
+
+    moving:n(
+      data.moving ??
+      data.M
+    ),
+
+    movementState:String(
+      data.movementState ??
+      data.S ??
+      ""
+    ).toUpperCase(),
+
+    velocity:n(
+      data.velocity ??
+      data.V
+    ),
+
+    velocityKmh:n(
+      data.velocityKmh ??
+      data.VK
+    ),
+
+    distance:n(
+      data.distance ??
+      data.DIST
+    )
+  };
+}
+
+/* ============================================================
+   HANDLE MQTT DATA
+   ============================================================ */
+
+function handleData(raw){
+
+  const data =
+    normalize(raw);
+
+  if(
+    !data ||
+    !data.device_id
+  )
+    return;
+
+  if(
+    allowedIds.length &&
+    !allowedIds.includes(
+      data.device_id
+    )
+  )
+    return;
+
+  const d =
+    getDevice(
+      data.device_id
+    );
+
+  d.online = true;
+  d.lastSeen = Date.now();
+  d.gateway =
+    data.gateway_id ||
+    d.gateway ||
+    "---";
+
+  const movement =
+    data.movementState ||
+    (data.moving
+      ? "MOVING"
+      : "STILL");
+
+  const activity =
+    movement === "STILL" ? 0 :
+    movement === "WALKING" ? 40 :
+    movement === "MOVING" ? 65 :
+    movement === "RUNNING" ? 90 :
+    data.moving ? 60 : 0;
+
+  const row = {
+
+    time:
+      new Date()
+      .toLocaleString(
+        "vi-VN"
+      ),
+
+    device_id:
+      data.device_id,
+
+    bpm:data.bpm,
+    avg:data.avg,
+    spo2:data.spo2,
+
+        temperature:data.temperature,
+
+    ir:data.ir,
+    red:data.red,
+
+    accelX:data.accelX,
+    accelY:data.accelY,
+    accelZ:data.accelZ,
+
+    accelTotal:data.accelTotal,
+    dynamicAcceleration:
+      data.dynamicAcceleration,
+
+    linearAccelX:
+      data.linearAccelX,
+
+    linearAccelY:
+      data.linearAccelY,
+
+    linearAccelZ:
+      data.linearAccelZ,
+
+    gyroX:data.gyroX,
+    gyroY:data.gyroY,
+    gyroZ:data.gyroZ,
+
+    moving:data.moving,
+    movementState:movement,
+
+    velocity:data.velocity,
+    velocityKmh:data.velocityKmh,
+    distance:data.distance,
+
+    activity,
+
+    gateway:
+      data.gateway_id ||
+      "---"
+  };
+
+  row.valid =
+    data.bpm >= VALID_BPM_MIN &&
+    data.bpm <= VALID_BPM_MAX &&
+    data.spo2 >= VALID_SPO2_MIN &&
+    data.spo2 <= VALID_SPO2_MAX;
+
+  row.warning =
+    warningFor(row);
+
+  d.latest = row;
+
+  d.history.unshift(row);
+
+  if(d.history.length > 200)
+    d.history.pop();
+
+  if(row.valid){
+
+    historyRows.unshift(
+      row
+    );
+
+    if(
+      historyRows.length >
+      500
+    )
+      historyRows.pop();
+
+    const s =
+      d.series;
+
+    const t =
+      Date.now();
+
+    s.t.push(t);
+        s.temperature.push(row.temperature);
+     s.bpm.push(row.bpm);
+        s.spo2.push(row.spo2);
+
+    s.ax.push(row.accelX);
+    s.ay.push(row.accelY);
+    s.az.push(row.accelZ);
+    s.da.push(row.dynamicAcceleration);
+
+    s.gx.push(row.gyroX);
+    s.gy.push(row.gyroY);
+    s.gz.push(row.gyroZ);
+
+    s.speed.push(
+      row.velocityKmh
+    );
+
+    s.distance.push(
+      row.distance
+    );
+
+    pruneSeries(s);
+  }
+
+  renderEverything();
+}
+
+/* ============================================================
+   SERIES PRUNING (giới hạn bộ nhớ, không đụng tới dữ liệu gốc)
+   ============================================================ */
+
+function pruneSeries(s){
+
+  const cutoff =
+    Date.now() -
+    SERIES_MAX_AGE_MS;
+
+  while(
+    s.t.length &&
+    s.t[0] < cutoff
+  ){
+
+    Object.values(s)
+      .forEach(arr =>
+        arr.shift()
+      );
+  }
+
+  while(
+    s.t.length >
+    SERIES_MAX_POINTS
+  ){
+
+    Object.values(s)
+      .forEach(arr =>
+        arr.shift()
+      );
+  }
+}
+
+/* ============================================================
+   WARNING
+   ============================================================ */
+
+function warningFor(r){
+
+  const a = [];
+
+  if(r.bpm > 120)
+    a.push(
+      "Nhịp tim cao"
+    );
+
+  if(
+    r.bpm > 0 &&
+    r.bpm < 50
+  )
+    a.push(
+      "Nhịp tim thấp"
+    );
+
+  if(
+    r.spo2 > 0 &&
+    r.spo2 < 95
+  )
+    a.push(
+      "SpO2 thấp"
+    );
+
+  if(
+    r.ir > 0 &&
+    r.ir < 50000
+  )
+    a.push(
+      "IR thấp"
+    );
+
+  if(
+    r.movementState ===
+    "RUNNING"
+  )
+    a.push(
+      "Đang chạy"
+    );
+
+  return a.length
+    ? a.join(", ")
+    : "Bình thường";
+}
+
+/* ============================================================
+   MQTT CONNECTION
+   ============================================================ */
+
+function connectMQTT(){
+
+  updateTopics();
+
+  if(client){
+
+    try{
+      client.end(
+        true
+      );
+    }catch(e){}
+  }
+
+  client =
+    mqtt.connect(
+      MQTT_URL,
+      {
+        clientId:
+          "WEB_" +
+          Math.random()
+            .toString(16)
+            .slice(2),
+
+        clean:true,
+
+        reconnectPeriod:1000,
+
+        connectTimeout:8000
+      }
+    );
+
+  client.on(
+    "connect",
+    () => {
+
+      setMqtt(
+        "Đã kết nối",
+        "ok"
+      );
+
+      client.subscribe(
+        TOPIC_DATA
+      );
+
+      client.subscribe(
+        TOPIC_STATUS
+      );
+
+      publishAllowed();
+
+      toast(
+        "MQTT đã kết nối"
+      );
+    }
+  );
+
+  client.on(
+    "reconnect",
+    () =>
+      setMqtt(
+        "Đang kết nối lại",
+        "wait"
+      )
+  );
+
+  client.on(
+    "close",
+    () =>
+      setMqtt(
+        "Mất kết nối",
+        "bad"
+      )
+  );
+
+  client.on(
+    "error",
+    () =>
+      setMqtt(
+        "Lỗi MQTT",
+        "bad"
+      )
+  );
+
+  client.on(
+    "message",
+    (
+      topic,
+      message
+    ) => {
+
+      const text =
+        message.toString();
+
+      if(
+        topic ===
+        TOPIC_DATA
+      ){
+
+        handleData(
+          text
+        );
+
+      }else if(
+        topic ===
+        TOPIC_STATUS
+      ){
+
+        try{
+
+          const status =
+            JSON.parse(
+              text
+            );
+
+          document.getElementById(
+            "settingsGateway"
+          ).innerText =
+            status.gateway_id ||
+            "---";
+
+        }catch(e){}
+      }
+    }
+  );
+}
+
+/* ============================================================
+   MQTT STATUS
+   ============================================================ */
+
+function setMqtt(
+  text,
+  type
+){
+
+  const dot =
+    type === "ok"
+      ? "dot dot-ok"
+      : type === "wait"
+      ? "dot dot-warn"
+      : "dot dot-bad";
+
+  document.getElementById(
+    "mqttText"
+  ).innerText =
+    text;
+
+  document.getElementById(
+    "sbMqtt"
+  ).innerText =
+    text;
+
+  document.getElementById(
+    "mqttDot"
+  ).className =
+    dot;
+
+  document.getElementById(
+    "sbDot"
+  ).className =
+    dot;
+}
+
+/* ============================================================
+   ALLOWED IDS
+   ============================================================ */
+
+function publishAllowed(){
+
+  if(
+    !client ||
+    !client.connected
+  )
+    return;
+
+  client.publish(
+    TOPIC_ALLOWED,
+    allowedIds.join("\n"),
+    {
+      retain:true
+    }
+  );
+}
+
+function addId(){
+
+  const id =
+    document.getElementById(
+      "newId"
+    ).value
+    .trim()
+    .toUpperCase();
+
+  if(!id){
+
+    toast(
+      "ID không được để trống"
+    );
+
+    return;
+  }
+
+  if(
+    !allowedIds.includes(
+      id
+    )
+  ){
+
+    allowedIds.push(
+      id
+    );
+  }
+
+  saveIds();
+
+  document.getElementById(
+    "newId"
+  ).value =
+    "";
+
+  publishAllowed();
+  renderIds();
+
+  toast(
+    "Đã thêm " + id
+  );
+}
+
+function deleteId(id){
+
+  allowedIds =
+    allowedIds.filter(
+      x => x !== id
+    );
+
+  saveIds();
+
+  publishAllowed();
+
+  if(selectedId === id)
+    selectedId = null;
+
+  renderIds();
+  renderEverything();
+}
+
+function clearIds(){
+
+  if(
+    !confirm(
+      "Xóa toàn bộ ID?"
+    )
+  )
+    return;
+
+  allowedIds = [];
+
+  saveIds();
+
+  devices = {};
+  historyRows = [];
+  selectedId = null;
+
+  publishAllowed();
+
+  renderEverything();
+}
+
+function renderIds(){
+
+  const tbody =
+    document.getElementById(
+      "idTable"
+    );
+
+  tbody.innerHTML =
+    allowedIds.length
+      ? allowedIds.map(
+          id => {
+
+            const d =
+              devices[id];
+
+            const status =
+              d?.online
+                ? "Trực tuyến"
+                : d
+                ? "Ngoại tuyến"
+                : "Chưa có dữ liệu";
+
+            const cls =
+              d?.online
+                ? "ok"
+                : d
+                ? "bad"
+                : "warn";
+
+            return `
+              <tr>
+                <td><b>${id}</b></td>
+                <td class="${cls}">
+                  ${status}
+                </td>
+                <td>
+                  <button class="btn danger"
+                    onclick="deleteId('${id}')">
+                    Xóa
+                  </button>
+                </td>
+              </tr>
+            `;
+          }
+        ).join("")
+      :
+        `<tr><td colspan="3">Chưa có ID</td></tr>`;
+}
+
+/* ============================================================
+   VIEW
+   ============================================================ */
+
+const titles = {
+
+  dashboard:"Dashboard sức khỏe vật nuôi",
+
+  devices:"Thiết bị",
+
+  detail:"Theo dõi sức khỏe",
+
+  analytics:"Phân tích dữ liệu",
+
+  history:"Lịch sử",
+
+  alerts:"Cảnh báo",
+
+  settings:"Cài đặt MQTT"
+};
+
+function switchView(
+  name
+){
+
+  document
+    .querySelectorAll(
+      ".view"
+    )
+    .forEach(v =>
+      v.classList.remove(
+        "active"
+      )
+    );
+
+  document
+    .getElementById(
+      "view" +
+      name.charAt(0)
+        .toUpperCase() +
+      name.slice(1)
+    )
+    .classList.add(
+      "active"
+    );
+
+  document
+    .querySelectorAll(
+      ".nav-item"
+    )
+    .forEach(
+      b =>
+        b.classList.toggle(
+          "active",
+          b.dataset.view ===
+          name
+        )
+    );
+
+  document.getElementById(
+    "pageTitle"
+  ).innerText =
+    titles[name] ||
+    name;
+
+  if(name === "analytics")
+    renderAnalytics();
+
+  if(name === "history")
+    renderHistory();
+
+  if(name === "alerts")
+    renderAlerts();
+}
+
+function openSelected(){
+
+  const id =
+    selectedId ||
+    primaryId();
+
+  if(!id){
+
+    switchView(
+      "devices"
+    );
+
+    toast(
+      "Chưa có thiết bị"
+    );
+
+    return;
+  }
+
+  selectedId =
+    id;
+
+  switchView(
+    "detail"
+  );
+
+  renderDetail();
+}
+
+function toggleSidebar(){
+
+  document
+    .getElementById(
+      "sidebar"
+    )
+    .classList.toggle(
+      "open"
+    );
+}
+
+function toggleTheme(){
+
+  const html =
+    document.documentElement;
+
+  const next =
+    html.dataset.theme ===
+    "dark"
+      ? "light"
+      : "dark";
+
+  html.dataset.theme =
+    next;
+
+  localStorage.setItem(
+    "farm_theme_v2",
+    next
+  );
+
+  document.getElementById(
+    "themeBtn"
+  ).innerText =
+    next === "dark"
+      ? "☀️"
+      : "🌙";
+
+  updateChartsTheme();
+}
+
+/* ============================================================
+   PRIMARY DEVICE
+   ============================================================ */
+
+function primaryId(){
+
+  if(
+    selectedId &&
+    devices[selectedId]
+  )
+    return selectedId;
+
+  const online =
+    allowedIds.find(
+      id =>
+        devices[id]?.online
+    );
+
+  if(online)
+    return online;
+
+  return allowedIds.find(
+    id =>
+      devices[id]
+  ) || null;
+}
+
+/* ============================================================
+   DASHBOARD RENDER
+   ============================================================ */
+
+function renderDashboard(){
+
+  const id =
+    primaryId();
+
+  const d =
+    id && devices[id];
+
+  document.getElementById(
+    "overviewId"
+  ).innerText =
+    id || "---";
+
+  if(!d?.latest)
+    return;
+
+  const r =
+    d.latest;
+
+  document.getElementById(
+    "kpiBpm"
+  ).innerHTML =
+    `${r.bpm}<span class="u">BPM</span>`;
+
+  document.getElementById(
+    "kpiAvg"
+  ).innerText =
+    r.avg;
+
+  document.getElementById(
+    "kpiSpo2"
+  ).innerHTML =
+    `${r.spo2}<span class="u">%</span>`;
+
+  document.getElementById(
+    "kpiSpo2Status"
+  ).innerText =
+    r.spo2 >= 95
+      ? "Bình thường"
+      : "Cảnh báo";
+
+  
+   document.getElementById(
+     "kpiTemperature"
+   ).innerHTML =
+     `${Number(r.temperature || 0).toFixed(2)}<span class="u">°C</span>`;
+
+   document.getElementById(
+    "kpiRed"
+  ).innerText =
+    r.red;
+
+  document.getElementById(
+    "kpiIr"
+  ).innerText =
+    r.ir;
+
+  document.getElementById(
+    "kpiSignal"
+  ).innerText =
+    r.ir >= 50000
+      ? "Tín hiệu tốt"
+      : r.ir >= 20000
+      ? "Tín hiệu yếu"
+      : "Không ổn định";
+
+  document.getElementById(
+    "kpiState"
+  ).innerText =
+    r.movementState;
+
+  document.getElementById(
+    "kpiMoving"
+  ).innerText =
+    r.moving;
+
+  document.getElementById(
+    "kpiGateway"
+  ).innerText =
+    d.gateway ||
+    "---";
+
+  document.getElementById(
+    "kpiGatewayState"
+  ).innerText =
+    d.online
+      ? "TRỰC TUYẾN"
+      : "NGOẠI TUYẾN";
+
+  document.getElementById(
+    "dashSpeed"
+  ).innerText =
+    r.velocity.toFixed(3) +
+    " m/s";
+
+  document.getElementById(
+    "dashSpeedKmh"
+  ).innerText =
+    r.velocityKmh.toFixed(3) +
+    " km/h";
+
+  document.getElementById(
+    "dashDistance"
+  ).innerText =
+    r.distance.toFixed(3) +
+    " m";
+
+  document.getElementById(
+    "dashMovement"
+  ).innerText =
+    r.movementState;
+
+  const score =
+    healthScore(
+      r,
+      d
+    );
+
+  document.getElementById(
+    "scoreVal"
+  ).innerText =
+    score;
+
+  document.getElementById(
+    "scoreGauge"
+  ).style.setProperty(
+    "--pct",
+    score
+  );
+
+  document.getElementById(
+    "scoreText"
+  ).innerText =
+    score >= 75
+      ? "Sức khỏe ổn định"
+      : score >= 50
+      ? "Cần theo dõi"
+      : "Cần chú ý";
+
+  renderFullTelemetry(
+    "fullTelemetry",
+    r
+  );
+
+  updateMainCharts(
+    d
+  );
+}
+
+/* ============================================================
+   FULL TELEMETRY
+   ============================================================ */
+
+function renderFullTelemetry(
+  target,
+  r
+){
+
+  const el =
+    document.getElementById(
+      target
+    );
+
+  if(!el)
+    return;
+
+  const items = [
+
+    ["🌡️ Nhiệt độ", Number(r.temperature || 0).toFixed(2) + " °C"],
+     ["RED", r.red],
+    ["IR", r.ir],
+
+    ["Gia tốc X", r.accelX.toFixed(3) + " m/s²"],
+    ["Gia tốc Y", r.accelY.toFixed(3) + " m/s²"],
+    ["Gia tốc Z", r.accelZ.toFixed(3) + " m/s²"],
+
+    ["Tổng gia tốc", r.accelTotal.toFixed(3) + " m/s²"],
+    ["Gia tốc động", r.dynamicAcceleration.toFixed(3) + " m/s²"],
+
+    ["Gia tốc tuyến tính X", r.linearAccelX.toFixed(3) + " m/s²"],
+    ["Gia tốc tuyến tính Y", r.linearAccelY.toFixed(3) + " m/s²"],
+    ["Gia tốc tuyến tính Z", r.linearAccelZ.toFixed(3) + " m/s²"],
+
+    ["Con quay X", r.gyroX.toFixed(2) + " °/s"],
+    ["Con quay Y", r.gyroY.toFixed(2) + " °/s"],
+    ["Con quay Z", r.gyroZ.toFixed(2) + " °/s"],
+
+    ["Đang di chuyển", r.moving],
+    ["Trạng thái", r.movementState],
+
+    ["Tốc độ", r.velocity.toFixed(3) + " m/s"],
+    ["Tốc độ (km/h)", r.velocityKmh.toFixed(3) + " km/h"],
+    ["Quãng đường", r.distance.toFixed(3) + " m"]
+  ];
+
+  el.innerHTML =
+    items.map(
+      x =>
+        `<div class="metric"><small>${x[0]}</small><b>${x[1]}</b></div>`
+    ).join("");
+}
+
+/* ============================================================
+   HEALTH SCORE
+   ============================================================ */
+
+function healthScore(
+  r,
+  d
+){
+
+  let s = 0;
+  let c = 0;
+
+  function add(
+    value,
+    good
+  ){
+
+    if(value){
+
+      s += good;
+      c++;
+    }
+  }
+
+  add(
+    r.bpm >= 60 &&
+    r.bpm <= 110,
+    25
+  );
+
+  add(
+    r.spo2 >= 95,
+    25
+  );
+
+  add(
+    r.ir >= 50000,
+    15
+  );
+
+  add(
+    Math.abs(
+      r.accelTotal - 9.80665
+    ) < .25,
+    10
+  );
+
+  add(
+    r.movementState !==
+    "RUNNING",
+    10
+  );
+
+  add(
+    d.online,
+    15
+  );
+
+  return Math.round(
+    Math.max(
+      0,
+      Math.min(
+        100,
+        s
+      )
+    )
+  );
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+
+let bpmChart;
+let spo2Chart;
+let accChart;
+let gyroChart;
+let detailBpmChart;
+let detailSpo2Chart;
+let temperatureChart;
+let detailTemperatureChart;
+
+/* ============================================================
+   TIỆN ÍCH VẼ BIỂU ĐỒ: gradient fill, đổ bóng nhẹ, tooltip chi tiết
+   Chỉ ảnh hưởng lớp HIỂN THỊ — không đụng tới dữ liệu / timestamp gốc
+   ============================================================ */
+
+function hexA(hex, alphaHex){
+  return (hex || "#888888") + alphaHex;
+}
+
+/* Gradient dọc dưới đường biểu đồ: đậm gần đường, nhạt dần xuống dưới */
+function gradientFill(colorHex){
+
+  return (context) => {
+
+    const {chart} = context;
+    const {ctx, chartArea} = chart;
+
+    if(!chartArea)
+      return hexA(colorHex, "22");
+
+    const g =
+      ctx.createLinearGradient(
+        0, chartArea.top,
+        0, chartArea.bottom
+      );
+
+    g.addColorStop(0, hexA(colorHex, "99"));
+    g.addColorStop(0.55, hexA(colorHex, "22"));
+    g.addColorStop(1, hexA(colorHex, "00"));
+
+    return g;
+  };
+}
+
+/* Điểm dữ liệu mới nhất được phóng to nhẹ để tạo hiệu ứng "glow" —
+   các điểm còn lại ẩn đi (radius 0) để đường luôn mượt và nhẹ CPU */
+function lastPointRadius(baseline){
+
+  return (context) => {
+
+    const arr =
+      context.dataset.data;
+
+    let last =
+      arr.length - 1;
+
+    while(
+      last >= 0 &&
+      (arr[last] == null ||
+       arr[last].y == null)
+    )
+      last--;
+
+    return context.dataIndex === last
+      ? baseline
+      : 0;
+  };
+}
+
+function makeDataset(label, colorHex, unit){
+
+  return {
+    label,
+    data:[],
+    unit,
+    borderColor:colorHex,
+    backgroundColor:gradientFill(colorHex),
+    fill:true,
+    borderWidth:2.5,
+    tension:.35,
+    cubicInterpolationMode:"monotone",
+    spanGaps:false,
+    pointRadius:lastPointRadius(4.5),
+    pointHoverRadius:5.5,
+    pointBackgroundColor:colorHex,
+    pointBorderColor:"#fff",
+    pointBorderWidth:1.5
+  };
+}
+
+/* Plugin: đổ bóng (drop-shadow) nhẹ cho đường + điểm biểu đồ */
+const shadowLinePlugin = {
+  id:"shadowLine",
+  beforeDatasetsDraw(chart){
+    const {ctx} = chart;
+    ctx.save();
+    ctx.shadowColor = "rgba(20,30,60,.22)";
+    ctx.shadowBlur = 7;
+    ctx.shadowOffsetY = 3;
+  },
+  afterDatasetsDraw(chart){
+    chart.ctx.restore();
+  }
+};
+
+if(
+  typeof Chart !==
+  "undefined" &&
+  !Chart.__shadowLineRegistered
+){
+  Chart.register(shadowLinePlugin);
+  Chart.__shadowLineRegistered = true;
+}
+
+function chartOptions(){
+
+  return {
+
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:false,
+    normalized:true,
+
+    interaction:{
+      mode:"index",
+      intersect:false
+    },
+
+    plugins:{
+
+      legend:{
+        position:"bottom",
+        labels:{
+          usePointStyle:true,
+          boxHeight:6,
+          color:css("--text-2"),
+          font:{family:"'Inter',sans-serif", size:11.5}
+        }
+      },
+
+      tooltip:{
+        backgroundColor:css("--surface"),
+        titleColor:css("--text-1"),
+        bodyColor:css("--text-2"),
+        borderColor:css("--border"),
+        borderWidth:1,
+        padding:10,
+        cornerRadius:10,
+        displayColors:true,
+        titleFont:{family:"'JetBrains Mono',monospace", size:12, weight:"600"},
+        bodyFont:{family:"'JetBrains Mono',monospace", size:12},
+
+        callbacks:{
+
+          title(items){
+
+            if(!items.length)
+              return "";
+
+            const v =
+              items[0].parsed.x;
+
+            return "Thời gian: " +
+              new Date(v)
+                .toLocaleTimeString(
+                  "vi-VN",
+                  {hour12:false}
+                );
+          },
+
+          label(item){
+
+            const ds =
+              item.dataset;
+
+            const val =
+              item.parsed.y;
+
+            if(val === null || val === undefined)
+              return ds.label + ": mất dữ liệu";
+
+            const unit =
+              ds.unit
+                ? " " + ds.unit
+                : "";
+
+            return ds.label + ": " +
+              (typeof val === "number"
+                ? val.toFixed(2)
+                : val) +
+              unit;
+          }
+        }
+      }
+    },
+
+    scales:{
+
+      x:{
+        type:"time",
+        time:{
+          unit:"second",
+          displayFormats:{
+            second:"HH:mm:ss",
+            minute:"HH:mm"
+          }
+        },
+
+        ticks:{
+          color:css("--text-3"),
+          maxTicksLimit:6,
+          autoSkip:true,
+          font:{family:"'JetBrains Mono',monospace", size:10.5}
+        },
+
+        grid:{
+          color:css("--border"),
+          tickLength:0
+        }
+      },
+
+      y:{
+        ticks:{
+          color:css("--text-3"),
+          font:{family:"'JetBrains Mono',monospace", size:10.5}
+        },
+
+        grid:{
+          color:css("--border")
+        }
+      }
+    },
+
+    elements:{
+      point:{
+        radius:0,
+        hitRadius:6
+      },
+
+      line:{
+        tension:.35,
+        borderWidth:2.5
+      }
+    }
+  };
+}
+
+/* ============================================================
+   TRẠNG THÁI DỮ LIỆU TRỰC TIẾP (chấm xanh/vàng/đỏ trên mỗi biểu đồ)
+   ============================================================ */
+
+function dataStatus(d){
+
+  if(!d || !d.latest)
+    return {
+      cls:"ds-wait",
+      dot:"dot dot-warn",
+      text:"Đang chờ dữ liệu"
+    };
+
+  if(!d.online)
+    return {
+      cls:"ds-lost",
+      dot:"dot dot-bad",
+      text:"Mất kết nối"
+    };
+
+  if(
+    Date.now() - d.lastSeen >
+    DATA_SLOW_MS
+  )
+    return {
+      cls:"ds-slow",
+      dot:"dot dot-warn",
+      text:"Dữ liệu chậm"
+    };
+
+  return {
+    cls:"ds-live",
+    dot:"dot dot-ok dot-live-pulse",
+    text:"Đang nhận dữ liệu"
+  };
+}
+
+function statusChipHTML(d){
+
+  const s =
+    dataStatus(d);
+
+  return `<span class="data-status ${s.cls}"><span class="${s.dot}"></span>${s.text}</span>`;
+}
+
+function renderChartStatuses(){
+
+  const id =
+    primaryId();
+
+  const d =
+    id && devices[id];
+
+  ["statBpm","statSpo2","statTemperature","statAcc","statGyro"]
+    .forEach(elId => {
+
+      const el =
+        document.getElementById(
+          elId
+        );
+
+      if(el)
+        el.innerHTML =
+          statusChipHTML(d);
+    });
+
+  const dd =
+    selectedId &&
+    devices[selectedId];
+
+  ["statDetailBpm","statDetailSpo2","statDetailTemperature"]
+    .forEach(elId => {
+
+      const el =
+        document.getElementById(
+          elId
+        );
+
+      if(el)
+        el.innerHTML =
+          statusChipHTML(dd);
+    });
+}
+
+/* Chuyển series {t:[...], v:[...]} thành mảng {x,y} thời gian thực
+   cho trục thời gian của Chart.js — không nội suy, không tạo điểm giả */
+function toXY(tArr, vArr){
+
+  const out = [];
+
+  for(let i=0; i<tArr.length; i++){
+
+    out.push({
+      x:tArr[i],
+      y:vArr[i] === undefined
+        ? null
+        : vArr[i]
+    });
+  }
+
+  return out;
+}
+
+/* Cuộn cửa sổ hiển thị (trục X) theo đồng hồ thực, không dùng
+   animation frame để giả lập — chỉ dịch biên min/max theo Date.now() */
+function slideChartWindow(chart){
+
+  if(!chart)
+    return;
+
+  const now =
+    Date.now();
+
+  chart.options.scales.x.min =
+    now - CHART_WINDOW_MS;
+
+  chart.options.scales.x.max =
+    now;
+}
+
+function slideAllChartWindows(){
+
+  [
+    bpmChart,
+    spo2Chart,
+    accChart,
+    gyroChart,
+    detailBpmChart,
+    detailSpo2Chart,
+    temperatureChart,
+    detailTemperatureChart
+  ].forEach(ch => {
+
+    if(!ch)
+      return;
+
+    if(
+      ch.canvas &&
+      ch.canvas.offsetParent === null
+    )
+      return;
+
+    slideChartWindow(ch);
+    ch.update("none");
+  });
+}
+
+function initCharts(){
+
+  bpmChart =
+    new Chart(
+      document.getElementById(
+        "bpmChart"
+      ),
+      {
+        type:"line",
+
+        data:{
+          datasets:[
+            makeDataset("Nhịp tim", css("--accent"), "BPM")
+          ]
+        },
+
+        options:chartOptions()
+      }
+    );
+
+  spo2Chart =
+    new Chart(
+      document.getElementById(
+        "spo2Chart"
+      ),
+      {
+        type:"line",
+
+        data:{
+          datasets:[
+            makeDataset("SpO2", css("--cyan"), "%")
+          ]
+        },
+
+        options:chartOptions()
+      }
+    );
+
+  temperatureChart =
+    new Chart(
+      document.getElementById(
+        "temperatureChart"
+      ),
+      {
+        type:"line",
+        data:{datasets:[
+          makeDataset("Nhiệt độ", css("--warn"), "°C")
+        ]},
+        options:chartOptions()
+      }
+    );
+
+  accChart =
+    new Chart(
+      document.getElementById(
+        "accChart"
+      ),
+      {
+        type:"line",
+
+        data:{
+
+          datasets:[
+            makeDataset("Trục X", css("--accent"), "m/s²"),
+            makeDataset("Trục Y", css("--cyan"), "m/s²"),
+            makeDataset("Trục Z", css("--warn"), "m/s²"),
+            makeDataset("Gia tốc động", css("--ok"), "m/s²")
+          ]
+        },
+
+        options:chartOptions()
+      }
+    );
+
+  gyroChart =
+    new Chart(
+      document.getElementById(
+        "gyroChart"
+      ),
+      {
+        type:"line",
+
+        data:{
+
+          datasets:[
+            makeDataset("Trục X", css("--accent"), "°/s"),
+            makeDataset("Trục Y", css("--cyan"), "°/s"),
+            makeDataset("Trục Z", css("--warn"), "°/s")
+          ]
+        },
+
+        options:chartOptions()
+      }
+    );
+
+  detailBpmChart =
+    new Chart(
+      document.getElementById(
+        "detailBpm"
+      ),
+      {
+        type:"line",
+        data:{
+          datasets:[
+            makeDataset("Nhịp tim", css("--accent"), "BPM")
+          ]
+        },
+        options:chartOptions()
+      }
+    );
+
+  detailSpo2Chart =
+    new Chart(
+      document.getElementById(
+        "detailSpo2"
+      ),
+      {
+        type:"line",
+        data:{
+          datasets:[
+            makeDataset("SpO2", css("--cyan"), "%")
+          ]
+        },
+        options:chartOptions()
+      }
+    );
+
+  detailTemperatureChart =
+    new Chart(
+      document.getElementById(
+        "detailTemperature"
+      ),
+      {
+        type:"line",
+        data:{datasets:[
+          makeDataset("Nhiệt độ", css("--warn"), "°C")
+        ]},
+        options:chartOptions()
+      }
+    );
+}
+
+function updateMainCharts(
+  d
+){
+
+  const s =
+    d.series;
+
+  bpmChart.data.datasets[0].data =
+    toXY(s.t, s.bpm);
+
+  slideChartWindow(bpmChart);
+  bpmChart.update("none");
+
+  spo2Chart.data.datasets[0].data =
+    toXY(s.t, s.spo2);
+
+  slideChartWindow(spo2Chart);
+  spo2Chart.update("none");
+
+  
+   temperatureChart.data.datasets[0].data =
+     toXY(s.t, s.temperature);
+
+   slideChartWindow(temperatureChart);
+   temperatureChart.update("none");
+
+   accChart.data.datasets[0].data =
+    toXY(s.t, s.ax);
+
+  accChart.data.datasets[1].data =
+    toXY(s.t, s.ay);
+
+  accChart.data.datasets[2].data =
+    toXY(s.t, s.az);
+
+  accChart.data.datasets[3].data =
+    toXY(s.t, s.da);
+
+  slideChartWindow(accChart);
+  accChart.update("none");
+
+  gyroChart.data.datasets[0].data =
+    toXY(s.t, s.gx);
+
+  gyroChart.data.datasets[1].data =
+    toXY(s.t, s.gy);
+
+  gyroChart.data.datasets[2].data =
+    toXY(s.t, s.gz);
+
+  slideChartWindow(gyroChart);
+  gyroChart.update("none");
+
+  renderChartStatuses();
+}
+
+/* ============================================================
+   DEVICE CARDS
+   ============================================================ */
+
+function renderDevices(){
+
+  const box =
+    document.getElementById(
+      "deviceList"
+    );
+
+  const ids =
+    allowedIds.filter(
+      id =>
+        devices[id]
+    );
+
+  if(!ids.length){
+
+    box.innerHTML =
+      `<div class="empty">Chưa có dữ liệu thiết bị</div>`;
+
+    return;
+  }
+
+  box.innerHTML =
+    ids.map(
+      id => {
+
+        const d =
+          devices[id];
+
+        const r =
+          d.latest;
+
+        if(!r)
+          return "";
+
+        return `
+          <div class="device-card">
+
+            <div class="dc-top">
+              <span class="dc-id">
+                🐕 ${id}
+              </span>
+
+              <span class="dc-badge ${
+                d.online
+                  ? "online"
+                  : "offline"
+              }">
+                ● ${
+                  d.online
+                    ? "Trực tuyến"
+                    : "Ngoại tuyến"
+                }
+              </span>
+            </div>
+
+            <div class="dc-stats">
+
+              <div class="dc-stat">
+                <span>❤️ BPM</span>
+                <b>${r.bpm}</b>
+              </div>
+
+              <div class="dc-stat">
+                <span>🫁 SpO2</span>
+                <b>${r.spo2}%</b>
+              </div>
+
+              
+               <div class="dc-stat">
+                 <span>🌡️ Nhiệt độ</span>
+                 <b>${Number(r.temperature || 0).toFixed(2)} °C</b>
+               </div>
+
+               <div class="dc-stat">
+                <span>🐾 Trạng thái</span>
+                <b>${r.movementState}</b>
+              </div>
+
+              <div class="dc-stat">
+                <span>⚡ Tốc độ</span>
+                <b>${r.velocityKmh.toFixed(2)} km/h</b>
+              </div>
+
+            </div>
+
+            <div class="panel-sub">
+              DA=${r.dynamicAcceleration.toFixed(3)} m/s²
+              · DIST=${r.distance.toFixed(2)} m
+            </div>
+
+            <button
+              class="btn primary"
+              style="width:100%;margin-top:12px"
+              onclick="selectDevice('${id}')"
+            >
+              Xem chi tiết
+            </button>
+
+          </div>
+        `;
+      }
+    ).join("");
+}
+
+function selectDevice(
+  id
+){
+
+  selectedId =
+    id;
+
+  switchView(
+    "detail"
+  );
+
+  renderDetail();
+}
+
+/* ============================================================
+   DETAIL
+   ============================================================ */
+
+function renderDetail(){
+
+  const d =
+    devices[selectedId];
+
+  if(!d?.latest)
+    return;
+
+  const r =
+    d.latest;
+
+  document.getElementById(
+    "detailId"
+  ).innerText =
+    selectedId;
+
+  document.getElementById(
+    "dBpm"
+  ).innerText =
+    r.bpm;
+
+  document.getElementById(
+    "dAvg"
+  ).innerText =
+    r.avg;
+
+  document.getElementById(
+    "dSpo2"
+  ).innerText =
+    r.spo2 + "%";
+
+  document.getElementById(
+    "dRed"
+  ).innerText =
+    r.red;
+
+  document.getElementById(
+    "dIr"
+  ).innerText =
+    r.ir;
+
+  
+   document.getElementById(
+     "dTemperature"
+   ).innerText =
+     Number(r.temperature || 0).toFixed(2) + "°C";
+
+   document.getElementById(
+    "dState"
+  ).innerText =
+    r.movementState;
+
+  renderFullTelemetry(
+    "detailTelemetry",
+    r
+  );
+
+  const s =
+    d.series;
+
+  detailBpmChart.data.datasets[0].data =
+    toXY(s.t, s.bpm);
+
+  slideChartWindow(detailBpmChart);
+  detailBpmChart.update("none");
+
+  detailSpo2Chart.data.datasets[0].data =
+    toXY(s.t, s.spo2);
+
+  slideChartWindow(detailSpo2Chart);
+  detailSpo2Chart.update("none");
+
+  
+   detailTemperatureChart.data.datasets[0].data =
+     toXY(s.t, s.temperature);
+
+   slideChartWindow(detailTemperatureChart);
+   detailTemperatureChart.update("none");
+
+   renderChartStatuses();
+
+  const tbody =
+    document.getElementById(
+      "detailHistory"
+    );
+
+  tbody.innerHTML =
+    d.history
+      .slice(0,50)
+      .map(
+        r => `
+          <tr>
+            <td>${r.time}</td>
+            <td>${r.bpm}</td>
+            <td>${r.avg}</td>
+            <td>${r.spo2}</td>
+            <td>${Number(r.temperature || 0).toFixed(2)}</td>
+             <td>${r.ir}</td>
+            <td>${r.red}</td>
+            <td>${r.accelX.toFixed(3)}</td>
+            <td>${r.accelY.toFixed(3)}</td>
+            <td>${r.accelZ.toFixed(3)}</td>
+            <td>${r.dynamicAcceleration.toFixed(3)}</td>
+            <td>${r.movementState}</td>
+            <td>${r.velocityKmh.toFixed(3)}</td>
+          </tr>
+        `
+      ).join("");
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
+
+function populateAnalytics(){
+
+  const sel =
+    document.getElementById(
+      "analyticsDevice"
+    );
+
+  const old =
+    sel.value;
+
+  sel.innerHTML =
+    allowedIds
+      .filter(
+        id =>
+          devices[id]
+      )
+      .map(
+        id =>
+          `<option value="${id}">${id}</option>`
+      )
+      .join("");
+
+  if(
+    old &&
+    devices[old]
+  )
+    sel.value =
+      old;
+
+  if(
+    !sel.value
+  )
+    sel.value =
+      primaryId() || "";
+}
+
+function statHTML(
+  arr
+){
+
+  if(!arr.length)
+    return `<div class="metric"><small>Dữ liệu</small><b>---</b></div>`;
+
+  const avg =
+    arr.reduce(
+      (a,b)=>a+b,
+      0
+    ) / arr.length;
+
+  return `
+    <div class="metric"><small>Trung bình</small><b>${avg.toFixed(2)}</b></div>
+    <div class="metric"><small>Nhỏ nhất</small><b>${Math.min(...arr).toFixed(2)}</b></div>
+    <div class="metric"><small>Lớn nhất</small><b>${Math.max(...arr).toFixed(2)}</b></div>
+  `;
+}
+
+function renderAnalytics(){
+
+  populateAnalytics();
+
+  const id =
+    document.getElementById(
+      "analyticsDevice"
+    ).value;
+
+  const d =
+    devices[id];
+
+  if(!d)
+    return;
+
+  const h =
+    d.history.filter(
+      r =>
+        r.valid
+    );
+
+  const bpm =
+    h.map(r=>r.bpm);
+
+  const spo2 =
+    h.map(r=>r.spo2);
+
+  
+   const temperature =
+     h.map(r=>r.temperature);
+
+   const da =
+    h.map(
+      r=>r.dynamicAcceleration
+    );
+
+  const speed =
+    h.map(
+      r=>r.velocityKmh
+    );
+
+  document.getElementById(
+    "anaBpm"
+  ).innerHTML =
+    statHTML(
+      bpm
+    );
+
+  document.getElementById(
+    "anaSpo2"
+  ).innerHTML =
+    statHTML(
+      spo2
+    );
+
+  
+   document.getElementById(
+     "anaTemperature"
+   ).innerHTML =
+     statHTML(
+       temperature
+     );
+
+   document.getElementById(
+    "anaAcc"
+  ).innerHTML =
+    statHTML(
+      da
+    );
+
+  document.getElementById(
+    "anaVelocity"
+  ).innerHTML =
+    statHTML(
+      speed
+    ) +
+    `
+    <div class="metric">
+      <small>Quãng đường hiện tại</small>
+      <b>${(d.latest?.distance||0).toFixed(2)} m</b>
+    </div>
+    `;
+}
+
+/* ============================================================
+   HISTORY
+   ============================================================ */
+
+function renderHistory(){
+
+  const search =
+    document.getElementById(
+      "historySearch"
+    ).value
+      .trim()
+      .toUpperCase();
+
+  const filter =
+    document.getElementById(
+      "historyDevice"
+    ).value;
+
+  const rows =
+    historyRows.filter(
+      r =>
+        (!search ||
+         r.device_id.includes(
+           search
+         )) &&
+        (!filter ||
+         r.device_id ===
+         filter)
+    );
+
+  document.getElementById(
+    "historyTable"
+  ).innerHTML =
+    rows
+      .slice(0,200)
+      .map(
+        r => `
+          <tr>
+            <td>${r.time}</td>
+            <td>${r.device_id}</td>
+            <td>${r.bpm}</td>
+            <td>${r.avg}</td>
+            <td>${r.spo2}</td>
+            <td>${Number(r.temperature || 0).toFixed(2)}</td>
+             <td>${r.ir}</td>
+            <td>${r.red}</td>
+            <td>${r.accelX.toFixed(3)}</td>
+            <td>${r.accelY.toFixed(3)}</td>
+            <td>${r.accelZ.toFixed(3)}</td>
+            <td>${r.dynamicAcceleration.toFixed(3)}</td>
+            <td>${r.movementState}</td>
+            <td>${r.velocityKmh.toFixed(3)}</td>
+            <td>${r.distance.toFixed(3)}</td>
+          </tr>
+        `
+      ).join("") ||
+      `<tr><td colspan="15">Chưa có dữ liệu</td></tr>`;
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+
+function renderAlerts(){
+
+  const box =
+    document.getElementById(
+      "alertList"
+    );
+
+  const alerts = [];
+
+  allowedIds.forEach(
+    id => {
+
+      const d =
+        devices[id];
+
+      if(!d?.latest)
+        return;
+
+      const r =
+        d.latest;
+
+      if(
+        r.bpm > 120
+      )
+        alerts.push(
+          ["🔴","critical",id,"Nhịp tim cao: "+r.bpm+" BPM"]
+        );
+
+      if(
+        r.bpm > 0 &&
+        r.bpm < 50
+      )
+        alerts.push(
+          ["🔴","critical",id,"Nhịp tim thấp: "+r.bpm+" BPM"]
+        );
+
+      if(
+        r.spo2 > 0 &&
+        r.spo2 < 95
+      )
+        alerts.push(
+          ["🟡","warning",id,"SpO2 thấp: "+r.spo2+"%"]
+        );
+
+      if(
+        r.ir > 0 &&
+        r.ir < 50000
+      )
+        alerts.push(
+          ["🟡","warning",id,"IR thấp: "+r.ir]
+        );
+
+      if(
+        r.movementState ===
+        "RUNNING"
+      )
+        alerts.push(
+          ["🔵","info",id,"Thiết bị đang RUNNING"]
+        );
+    }
+  );
+
+  box.innerHTML =
+    alerts.length
+      ? alerts.map(
+          a =>
+            `<div class="alert-row">
+              <div class="alert-ic ${
+                a[1]==="critical"
+                  ? "icon-red"
+                  : a[1]==="warning"
+                  ? "icon-amber"
+                  : "icon-blue"
+              }">${a[0]}</div>
+              <div class="alert-text">
+                <b>${a[2]}</b>
+                <span>${a[3]}</span>
+              </div>
+            </div>`
+        ).join("")
+      : `<div class="empty">Chưa có cảnh báo</div>`;
+}
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+
+function exportCSV(){
+
+  if(
+    !historyRows.length
+  ){
+
+    toast(
+      "Chưa có dữ liệu"
+    );
+
+    return;
+  }
+
+  const headers = [
+    "Time","Device","BPM","AVG","SpO2","TemperatureC","IR","RED",
+    "AccelX","AccelY","AccelZ","DynamicAcc",
+    "LinearX","LinearY","LinearZ",
+    "GyroX","GyroY","GyroZ",
+    "Moving","MovementState",
+    "Velocity","VelocityKmh","Distance"
+  ];
+
+  const lines =
+    [
+      headers.join(",")
+    ];
+
+  historyRows.forEach(
+    r => {
+
+      lines.push(
+        [
+          `"${r.time}"`,
+          r.device_id,
+          r.bpm,
+          r.avg,
+          r.spo2,
+                     r.temperature,
+           r.ir,
+          r.red,
+          r.accelX,
+          r.accelY,
+          r.accelZ,
+          r.dynamicAcceleration,
+          r.linearAccelX,
+          r.linearAccelY,
+          r.linearAccelZ,
+          r.gyroX,
+          r.gyroY,
+          r.gyroZ,
+          r.moving,
+          r.movementState,
+          r.velocity,
+          r.velocityKmh,
+          r.distance
+        ].join(",")
+      );
+    }
+  );
+
+  const blob =
+    new Blob(
+      [lines.join("\n")],
+      {
+        type:
+          "text/csv;charset=utf-8"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  const a =
+    document.createElement(
+      "a"
+    );
+
+  a.href = url;
+
+  a.download =
+    "pet_health_" +
+    PROJECT_ID +
+    ".csv";
+
+  a.click();
+
+  URL.revokeObjectURL(
+    url
+  );
+}
+
+/* ============================================================
+   PROJECT
+   ============================================================ */
+
+function saveProject(){
+
+  const p =
+    document.getElementById(
+      "projectInput"
+    ).value.trim();
+
+  if(!p)
+    return;
+
+  PROJECT_ID =
+    p;
+
+  localStorage.setItem(
+    "farm_project_id_v3",
+    PROJECT_ID
+  );
+
+  allowedIds = [];
+  devices = {};
+  historyRows = [];
+  selectedId = null;
+
+  saveIds();
+  updateTopics();
+  loadIds();
+
+  connectMQTT();
+  renderEverything();
+
+  toast(
+    "Đã đổi Project"
+  );
+}
+
+/* ============================================================
+   ONLINE TIMEOUT
+   ============================================================ */
+
+function checkTimeouts(){
+
+  const now =
+    Date.now();
+
+  let changed =
+    false;
+
+  Object.values(
+    devices
+  ).forEach(
+    d => {
+
+      if(
+        d.online &&
+        now -
+        d.lastSeen >
+        10000
+      ){
+
+        d.online =
+          false;
+
+        changed = true;
+
+        /* Mất kết nối: chèn một điểm null ngay sau mẫu thật cuối
+           cùng để biểu đồ hiển thị khoảng trống rõ ràng, thay vì
+           tự nối liền sang lần nhận dữ liệu tiếp theo. Đây KHÔNG
+           phải dữ liệu giả — chỉ là dấu hiệu "không có dữ liệu". */
+        const s =
+          d.series;
+
+        if(
+          s.t.length &&
+          s.bpm[s.bpm.length-1] !== null
+        ){
+
+          const gapT =
+            Math.min(
+              d.lastSeen + 1,
+              now
+            );
+
+          Object.keys(s)
+            .forEach(k => {
+
+              s[k].push(
+                k === "t"
+                  ? gapT
+                  : null
+              );
+            });
+
+          pruneSeries(s);
+        }
+      }
+    }
+  );
+
+  renderOnline();
+  renderChartStatuses();
+
+  if(changed)
+    renderEverything();
+}
+
+/* ============================================================
+   ONLINE
+   ============================================================ */
+
+function renderOnline(){
+
+  const online =
+    allowedIds.filter(
+      id =>
+        devices[id]?.online
+    ).length;
+
+  const text =
+    online +
+    "/" +
+    allowedIds.length;
+
+  document.getElementById(
+    "sbOnline"
+  ).innerText =
+    text;
+
+  document.getElementById(
+    "tbOnline"
+  ).innerText =
+    text;
+}
+
+/* ============================================================
+   REFRESH
+   ============================================================ */
+
+function renderEverything(){
+
+  renderOnline();
+  renderIds();
+  renderDevices();
+  renderDashboard();
+
+  if(
+    selectedId
+  )
+    renderDetail();
+
+  renderAnalytics();
+  renderHistory();
+  renderAlerts();
+}
+
+function refreshUI(){
+  renderEverything();
+  toast(
+    "Đã làm mới"
+  );
+}
+
+/* ============================================================
+   CSS VARIABLE / TOAST
+   ============================================================ */
+
+function css(name){
+
+  return getComputedStyle(
+    document.documentElement
+  )
+    .getPropertyValue(
+      name
+    )
+    .trim();
+}
+
+function updateChartsTheme(){
+
+  [
+    bpmChart,
+    spo2Chart,
+    accChart,
+    gyroChart,
+    detailBpmChart,
+     detailSpo2Chart,
+     temperatureChart,
+     detailTemperatureChart
+   ].forEach(
+    ch => {
+
+      if(!ch)
+        return;
+
+      Object.values(
+        ch.options.scales || {}
+      ).forEach(
+        sc => {
+
+          if(sc.grid)
+            sc.grid.color =
+              css("--border");
+
+          if(sc.ticks)
+            sc.ticks.color =
+              css("--text-3");
+        }
+      );
+
+      ch.update("none");
+    }
+  );
+}
+
+let toastTimer;
+
+function toast(
+  text
+){
+
+  const el =
+    document.getElementById(
+      "toast"
+    );
+
+  el.innerText =
+    text;
+
+  el.classList.add(
+    "show"
+  );
+
+  clearTimeout(
+    toastTimer
+  );
+
+  toastTimer =
+    setTimeout(
+      () =>
+        el.classList.remove(
+          "show"
+        ),
+      2200
+    );
+}
+
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
+(function init(){
+
+  const theme =
+    localStorage.getItem(
+      "farm_theme_v2"
+    ) ||
+    "light";
+
+  document.documentElement
+    .dataset.theme =
+    theme;
+
+  document.getElementById(
+    "themeBtn"
+  ).innerText =
+    theme === "dark"
+      ? "☀️"
+      : "🌙";
+
+  document.getElementById(
+    "projectInput"
+  ).value =
+    PROJECT_ID;
+
+  updateTopics();
+  loadIds();
+  renderIds();
+  initCharts();
+  connectMQTT();
+  renderEverything();
+
+  setInterval(
+    checkTimeouts,
+    1000
+  );
+
+  setInterval(
+    () => {
+
+      document.getElementById(
+        "tbTime"
+      ).innerText =
+        new Date()
+          .toLocaleTimeString(
+            "vi-VN",
+            {
+              hour12:false
+            }
+          );
+
+      renderOnline();
+      renderChartStatuses();
+      slideAllChartWindows();
+
+    },
+    1000
+  );
+
+})();
+</script>
+</body>
+</html>
